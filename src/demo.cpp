@@ -18,8 +18,8 @@ typedef struct{
 
 vector<User> peers;
 
-string g_vendor = "";
-string g_username = "";
+string g_vendor = "6D7A26A1D3554A54A9F43BE6797FE3E2";
+string g_username = "test";
 string g_token = "";
 uint32_t g_uid = 0;
 string g_channel = "";
@@ -28,7 +28,7 @@ int g_call_n = 0;
 
 bool g_queried = false;
 bool g_reconnect = false;
-string dbg_ip =
+string dbg_ip = 
 	""
 //	"192.168.99.82"
 //  "122.141.244.82"
@@ -236,7 +236,7 @@ int main(int argc, char** argv){
 	agora = getAgoraSDKInstanceCPP();
 	agora->callbackSet(new CallBack());
 	ICallBack *cb = agora->callbackGet();
-
+/*
     if (argc<6){
         printf(" Usage : demo dbgip [vendorKey] [userName] [uid] [token] \n");
         printf("         demo dbgip [vendorKey] [userName] [uid] [token] [channelName] [peerName] [peerUid] ... \n");
@@ -260,7 +260,7 @@ int main(int argc, char** argv){
             peers.push_back(user);
         }
     }
-
+*/
 	if (dbg_ip!=""){
 		agora->dbg("dbgip", strlen("dbgip"), dbg_ip.c_str(), dbg_ip.size());
 	}
