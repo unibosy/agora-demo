@@ -123,6 +123,7 @@ class CallBack : public ICallBack{
 
     virtual void onLoginFailed(int ecode)  override{
         cout << "onLoginFailed : ecode = " << ecode << endl;
+        stopped = true;
         //do_login();
     }
     virtual void onLogout(int ecode)  override{
@@ -262,7 +263,7 @@ void help(){
   cout<<"Please input ' switchp2p $somebody ' to chat with someone!"<<endl;
   cout<<"Please input ' switchp2c $oneChannel ' to chat in the channel!"<<endl;
   //cout<<"Please input ' changeAccout $account' to change current account to special one! [default is the first account]"<<endl;
-  cout<<"Please input quit to logout!"<<endl;
+  cout<<"Please input ' quit ' to logout!"<<endl;
 }
 void p2cHelp(){
   cout<<"Please input ' sendmsg $msg ' to send channel message" <<endl;
@@ -400,6 +401,7 @@ int main(int argc, char** argv){
   
   g_uid = my_atol(argv[i++]);
   g_token = argv[i++];
+  cout<<"g_token:"<<g_token<<endl;
   
   do_login();
   businessThread = std::thread(do_business);
