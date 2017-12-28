@@ -10,10 +10,18 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <ctime>
+#include "utils.h"
+
 using namespace agora_sdk_cpp;
 using namespace std;
+using namespace agora2::tools;
 
-IAgoraAPI *agora ;
+//set your appid and appCertificateId
+string appId = "";
+string appCertificateId = "";
+
+IAgoraAPI *agora;
 IAgoraAPI* createAgoraSDKInstance();
 
 
@@ -28,7 +36,6 @@ ChatHisV_t ChatHisV;
 typedef map<string,ChatHisV_t> P2PChatHisMap_t;
 P2PChatHisMap_t P2PChatHisMap;
 
-string g_vendor = "";
 string g_username = "";
 string g_token = "";
 uint32_t g_uid = 0;
@@ -42,10 +49,25 @@ bool g_reconnect = false;
 bool isJoinChannel = false;
 bool stopped = false;
 
+static std::string generateSignallingToken(const std::string &account, const std::string &appId, const std::string appCertificateId, int expiredTsInSeconds){
+    std::ostringstream ostr;
+    ostr << account.c_str()<<appId.c_str()<<appCertificateId.c_str()<<expiredTsInSeconds;
+    string md5StrSrc = ostr.str();
+		std::string md5StrDest = agora2::tools::md5(md5StrSrc);
+    std::ostringstream token;
+    token<<1<<":"<<appId.c_str()<<":"<<expiredTsInSeconds<<":"<<md5StrDest.c_str();
+    string md5DestStr = token.str();
+		return md5DestStr;
+	}
 
 static void do_login(){
-  cout << "Login as " << g_username << " ..." << endl;
-	agora->login(g_vendor.data(),g_vendor.size(),g_username.data(),g_username.size(),g_token.data(),g_token.size(),g_uid,"",0);
+  time_t ltime;
+  time(&ltime);
+  int expiredSecond = ltime + 3600;
+  appCertificateId = g_token;
+  std::string token = generateSignallingToken(g_username, appId, appCertificateId, expiredSecond);
+  cout << "Login as " << g_username <<",token:"<<token<< " ..."<<endl;
+	agora->login(appId.data(),appId.size(),g_username.data(),g_username.size(),token.data(), token.size(),g_uid,"",0);
 }
 
 void saveP2PChatHistory(const string& account, const string& msg, int direction/*0:send, 1:recv*/){
@@ -322,12 +344,12 @@ int main(int argc, char** argv){
 	ICallBack *cb = agora->callbackGet();
 
   if (argc!=5){
-    printf(" Usage : ./sig_demo [vendorKey] [userName] [uid] [token] \n");
+    printf(" Usage : ./sig_demo [appId] [userName] [uid] [appCertificateId] \n");
     exit(-1);
   }
   cout<<"argc:"<<argc<<endl;
   int i=1;
-  g_vendor = argv[i++];
+  appId = argv[i++];
   g_username = argv[i++];
   if(g_username.find(" ") != std::string::npos){
     cout<<"username cannot contain space!"<<endl;
