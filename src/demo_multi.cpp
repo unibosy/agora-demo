@@ -16,6 +16,8 @@
 #include <vector>
 #include <unistd.h>
 #include <sys/types.h>
+#include "utils.h"
+
 using namespace agora_sdk_cpp;
 using namespace std;
 
@@ -29,6 +31,8 @@ vector<User> peers;
 //map<string, string> p2pHistory;//user-user
 
 string g_vendor = "";
+string appCertificateId = "";
+
 string g_username = "";
 string g_token = "";
 uint32_t g_uid = 0;
@@ -41,6 +45,21 @@ bool g_reconnect = false;
 //string dbg_ip = "123.125.184.7";
 string dbg_ip = "";
 
+
+
+static std::string generateSignallingToken(const std::string &account, const std::string &appId, const std::string appCertificateId, int expiredTsInSeconds){
+    std::ostringstream ostr;
+    ostr << account.c_str()<<appId.c_str()<<appCertificateId.c_str()<<expiredTsInSeconds;
+    string md5StrSrc = ostr.str();
+		std::string md5StrDest = agora2::tools::md5(md5StrSrc);
+    std::ostringstream token;
+    token<<1<<":"<<appId.c_str()<<":"<<expiredTsInSeconds<<":"<<md5StrDest.c_str();
+    string md5DestStr = token.str();
+		return md5DestStr;
+	}
+
+
+
 class CallBack : public ICallBack {
 private:
     IAgoraAPI *agora ;
@@ -50,8 +69,15 @@ public:
 	  {
 	  }
     void do_login(){
+      string token = "";
+      if(!appCertificateId.empty()){
+        time_t ltime;
+        time(&ltime);
+        int expiredSecond = ltime + 3600;
+        token = generateSignallingToken(g_username, g_vendor, appCertificateId, expiredSecond);
+      }
       cout << "Login as name:" << name << " ..." << endl;
-	    agora->login(g_vendor.data(),g_vendor.size(),name.data(),name.size(),g_token.data(),g_token.size(),g_uid,"",0);
+	    agora->login(g_vendor.data(),g_vendor.size(),name.data(),name.size(),token.data(),token.size(),g_uid,"",0);
     }
     virtual void onLoginSuccess(uint32_t uid, int fd) override {
         cout << "onLoginSuccess" <<",uid:"<<uid<<endl;
@@ -342,7 +368,7 @@ int main(int argc, char** argv){
   cout<<"main argc:"<<argc<<endl;
   if (argc<4){
     cout<<"Usage:"<<endl;
-    cout<<"./sig_demo_mul appid name1:name2 channelName"<<endl;
+    cout<<"./sig_demo_mul appId name1:name2 appCertificateId"<<endl;
     return 0;
   }
   g_vendor = argv[1];
@@ -355,8 +381,8 @@ int main(int argc, char** argv){
     cout<<"name connot be empty"<<endl;
     return 0;
   }
-  g_channel = argv[3];
-  cout<<"vendor appid:"<<argv[1]<<",base name:"<<names<<",channelName:"<<g_channel<<endl;
+  appCertificateId = argv[3];
+  cout<<"vendor appid:"<<argv[1]<<",base name:"<<names<<",appCertificateId:"<<appCertificateId<<endl;
 	 
 	//split names
 	vector<string> v;
