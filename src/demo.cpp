@@ -61,11 +61,14 @@ static std::string generateSignallingToken(const std::string &account, const std
 	}
 
 static void do_login(){
-  time_t ltime;
-  time(&ltime);
-  int expiredSecond = ltime + 3600;
-  appCertificateId = g_token;
-  std::string token = generateSignallingToken(g_username, appId, appCertificateId, expiredSecond);
+  string token = "";
+  if(!appCertificateId.empty()){
+    time_t ltime;
+    time(&ltime);
+    int expiredSecond = ltime + 3600;
+    appCertificateId = g_token;
+    token = generateSignallingToken(g_username, appId, appCertificateId, expiredSecond);
+  }
   cout << "Login as " << g_username <<",token:"<<token<< " ..."<<endl;
 	agora->login(appId.data(),appId.size(),g_username.data(),g_username.size(),token.data(), token.size(),g_uid,"",0);
 }
@@ -180,7 +183,7 @@ class CallBack : public ICallBack{
 
   virtual void onInviteAcceptedByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
     cout << "Invitation acceptd by " << account << endl;
-  call_next();
+    call_next();
   }
 
   virtual void onInviteRefusedByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
@@ -206,11 +209,17 @@ class CallBack : public ICallBack{
   virtual void onChannelQueryUserIsIn(char const * channelID, size_t channelID_size,char const * account, size_t account_size,int isIn) {
     isJoinChannel = true;
   }
-  virtual void onMessageSendError(char const * messageID, size_t messageID_size,int ecode) {
+  virtual void onMessageSendError(char const * messageID, size_t messageID_size,int ecode) override{
     cout<<"send messageID:"<<messageID <<" failed,error code:"<<ecode<<endl;  
   }
-  virtual void onMessageSendSuccess(char const * messageID, size_t messageID_size) {
+  virtual void onMessageSendSuccess(char const * messageID, size_t messageID_size) override{
     cout<<"messageID:"<<messageID<<" send success!"<<endl;
+  }
+  virtual void onInviteFailed(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid,int ecode,char     const * extra, size_t extra_size) override {
+    cout<<"onInviteFailed,channelID:"<<channelID<<",account:"<<account<<",extra:"<<extra<<endl;
+  }
+  virtual void onInviteEndByMyself(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid) override{
+    cout<<"[cb] onInviteEndByMyself channelID:"<<channelID<<",account:"<<account<<endl;
   }
 };
 
@@ -235,6 +244,11 @@ void help(){
 void p2cHelp(){
   cout<<"Please input ' sendmsg $msg ' to send channel message" <<endl;
   cout<<"Please input ' leave ' to leave channel chat"<<endl;
+  cout<<"Please input ' invite $user' to invite this user to join channel"<<endl;
+  cout<<"Please input ' end $user' to end invite this user to join channel"<<endl;
+  cout<<"Please input ' accept $channel' to invite this user to join channel"<<endl;
+  cout<<"Please input ' refuse $user' to invite this user to join channel"<<endl;
+  cout<<"Please input ' query ' to query channel user numbers"<<endl;
 }
 string getSendMsgContent(const string& commands){
   string content = "";
@@ -264,6 +278,30 @@ void optInChannel(){
       break;
     }else if(strncmp(commands,"helpp2c",strlen("helpp2c"))==0){
       p2cHelp();
+    }else if(strncmp(commands, "invite",strlen("invite")) == 0){
+      istringstream is(commands);
+      string dump, user;
+      is>>dump>>user;
+      cout<<"channel:"<<g_channel<<",user:"<<user<<endl;
+      agora->channelInviteUser(g_channel.data(), g_channel.size(),user.data(), user.size(),0);     
+    }else if(strncmp(commands, "query", strlen("query")) ==0){
+      agora->channelQueryUserNum(g_channel.data(), g_channel.size()); 
+    }else if(strncmp(commands, "end", strlen("end"))==0){
+      istringstream is(commands);
+      string dump, user;
+      is>>dump>>user;
+      agora->channelInviteEnd(g_channel.data(), g_channel.size(),user.data(), user.size(),0);
+    }else if(strncmp(commands, "accept", strlen("query")) ==0){
+      istringstream is(commands);
+      string dump, user;
+      is>>dump>>user;
+      agora->channelInviteAccept(g_channel.data(), g_channel.size(),user.data(), user.size(),0);
+    }else if(strncmp(commands, "refuse", strlen("refuse")) ==0){
+      istringstream is(commands);
+      string dump, user;
+      is>>dump>>user;
+      string extra = "i am busy";
+      agora->channelInviteRefuse(g_channel.data(), g_channel.size(),user.data(), user.size(),0,extra.data(),extra.size());
     }else{
       cout<<"Please input helpp2c!"<<endl;
     }
@@ -279,15 +317,12 @@ void opP2PChat(string& account){
       cout<<"send to:"<<g_username<<", message is:"<<msg<<endl;
       saveP2PChatHistory(account, msg, 0);
       agora->messageInstantSend(account.c_str(), account.size(), 0, msg.data(), msg.size(),msgID.data(), msgID.size());
-    }
-    else if(strncmp(commands,"quitp2p",strlen("quitp2p"))==0){
+    }else if(strncmp(commands,"quitp2p",strlen("quitp2p"))==0){
       cout<<"quit p2p chat now..."<<endl;
       break;
-    }
-    else if(strncmp(commands,"helpp2p",strlen("helpp2p"))==0){
+    }else if(strncmp(commands,"helpp2p",strlen("helpp2p"))==0){
       p2pHelp();
-    }
-    else{
+    }else{
       cout<<"Please input helpp2p!"<<endl;
       continue;
     }
@@ -351,10 +386,6 @@ int main(int argc, char** argv){
   int i=1;
   appId = argv[i++];
   g_username = argv[i++];
-  if(g_username.find(" ") != std::string::npos){
-    cout<<"username cannot contain space!"<<endl;
-    return 0;
-  }
   
   g_uid = my_atol(argv[i++]);
   g_token = argv[i++];
