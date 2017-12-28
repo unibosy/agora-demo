@@ -17,7 +17,6 @@ IAgoraAPI *agora ;
 IAgoraAPI* createAgoraSDKInstance();
 
 
-//save chat messages
 typedef struct{
   string name;
   uint32_t uid;
@@ -45,8 +44,8 @@ bool stopped = false;
 
 
 static void do_login(){
-    cout << "Login as " << g_username << " ..." << endl;
-	  agora->login(g_vendor.data(),g_vendor.size(),g_username.data(),g_username.size(),g_token.data(),g_token.size(),g_uid,"",0);
+  cout << "Login as " << g_username << " ..." << endl;
+	agora->login(g_vendor.data(),g_vendor.size(),g_username.data(),g_username.size(),g_token.data(),g_token.size(),g_uid,"",0);
 }
 
 void saveP2PChatHistory(const string& account, const string& msg, int direction/*0:send, 1:recv*/){
@@ -67,11 +66,11 @@ void saveP2PChatHistory(const string& account, const string& msg, int direction/
 template<typename T>
 void printer(const T& val)
 {
-    cout << val ;//<< endl;
+  cout << val ;
 }
 void ShowVec(const vector<string>& valList)
 {
-    for_each(valList.cbegin(), valList.cend(), printer<string>);
+  for_each(valList.cbegin(), valList.cend(), printer<string>);
 }
 void displayP2PChatHis(string& account){
   if(account.empty()){
@@ -89,161 +88,108 @@ void displayP2PChatHis(string& account){
 
 
 class CallBack : public ICallBack{
-    virtual void onLoginSuccess(uint32_t uid, int fd) override {
-        cout << "onLoginSuccess, uid:"<<uid<<endl;
-#if 0
-        if (g_channel != ""){
-            cout << "Ready to start call : " << endl;
-            cout << "Join channel : " << g_channel << " ..." << endl;
-            agora->channelJoin(g_channel.data(), g_channel.size());
-        }
-        if (g_queried){
-            if (g_reconnect) agora->logout();
-        }else{
-            cout<<"channelQueryUserNum,channelName:"<<g_channel<<endl;
-            agora->channelQueryUserNum(g_channel.data(), g_channel.size());
-        }
-        // agora->messageAppSend("{\"message\":{\"id\":3,\"timestamp\":1435635235511,\"data\":{\"uids\":[7914]},\"type\":3,\"cmd\":\"getProfiles\"}}", "000");
-        // agora->messagePushSend(g_username, g_uid, "hello yy", "000");
-#endif
+  virtual void onLoginSuccess(uint32_t uid, int fd) override {
+    cout << "onLoginSuccess, uid:"<<uid<<endl;
+  }
+  virtual void onMessageAppReceived(char const * msg, size_t msg_size)  override{
+    cout << "onMessageAppReceived " << msg << endl;
+  }
+  virtual void onChannelQueryUserNumResult(char const * channelID, size_t channelID_size,int ecode,int num)  override {
+    cout << "onChannelQueryUserNumResult:" << channelID <<",ecode:"<<ecode << ",num:" << num << endl;
+    if (ecode==0){
+      g_queried = true;
+      if (g_reconnect) 
+        agora->logout();
     }
-
-    virtual void onMessageAppReceived(char const * msg, size_t msg_size)  override{
-        cout << "onMessageAppReceived " << msg << endl;
-    }
-
-    virtual void onChannelQueryUserNumResult(char const * channelID, size_t channelID_size,int ecode,int num)  override {
-        cout << "onChannelQueryUserNumResult:" << channelID <<",ecode:"<<ecode << ",num:" << num << endl;
-        if (ecode==0){
-            g_queried = true;
-			      if (g_reconnect) 
-              agora->logout();
-          }
-    }
-
-    virtual void onLoginFailed(int ecode)  override{
-        cout << "onLoginFailed : ecode = " << ecode << endl;
-        stopped = true;
-        //do_login();
-    }
-    virtual void onLogout(int ecode)  override{
-        cout << "onLogout : ecode = " << ecode << endl;
-        //do_login();
-        stopped = true;
-    }
-  	bool call_next(){
-		  if (size_t(g_call_n)<peers.size()){
-			  User &u = peers[g_call_n++];
-            if (u.uid == 1){
-                cout << "Invite phone : " << u.name << " to channel ..." << endl;
-                agora->channelInvitePhone(g_channel.data(), g_channel.size(), u.name.data(), u.name.size());
-            }else{
-                cout << "Invite user : " << u.name << "(" << u.uid << ") to channel ..." << endl;
-                agora->channelInviteUser(g_channel.data(), g_channel.size(),u.name.data(), u.name.size(),u.uid);
-            }
+  }
+  virtual void onLoginFailed(int ecode)  override{
+    cout << "onLoginFailed : ecode = " << ecode << endl;
+    stopped = true;
+  }
+  virtual void onLogout(int ecode)  override{
+    cout << "onLogout : ecode = " << ecode << endl;
+    stopped = true;
+  }
+  bool call_next(){
+    if (size_t(g_call_n)<peers.size()){
+      User &u = peers[g_call_n++];
+      if (u.uid == 1){
+        cout << "Invite phone : " << u.name << " to channel ..." << endl;
+        agora->channelInvitePhone(g_channel.data(), g_channel.size(), u.name.data(), u.name.size());
+      }else{
+        cout << "Invite user : " << u.name << "(" << u.uid << ") to channel ..." << endl;
+        agora->channelInviteUser(g_channel.data(), g_channel.size(),u.name.data(), u.name.size(),u.uid);
+      }
 			  return true;
-		  }
-		  return false;
-	  }
-    virtual void onChannelLeaved(char const * channelID, size_t channelID_size,int ecode) {
-      cout<<"onChannelLeaved channelID:"<<channelID<<",ecode:"<<ecode<<endl;
     }
-    virtual void onChannelJoined(char const * channelID, size_t channelID_size)  override{
-        cout << "onChannelJoined Join channel successfully." << endl;
-        // send channel msg
-    #if 0
-        if (1){
-			    string msg = string("hello everyone I'm ") + g_username;
-			    cout << "send channel msg :" << msg << endl;
-			    string msgID = "join_message";
-			    agora->messageChannelSend(channelID, channelID_size,msg.data(), msg.size(),msgID.data(), msgID.size());
-		    }
-    #endif
-        // send invite
-		    //while(call_next());
-		    /*
-		    for(list<User>::iterator it = peers.begin(); it!=peers.end(); it++){
-			  User &u = *it;
-            if (u.uid == 1){
-                cout << "Invite phone : " << u.name << " to channel ..." << endl;
-                agora->channelInvitePhone(g_channel, u.name);
-            }else{
-                cout << "Invite user : " << u.name << "(" << u.uid << ") to channel ..." << endl;
-                agora->channelInviteUser(g_channel, u.name, u.uid);
-            }
-        }
-		  */
+    return false;
+  }
+  virtual void onChannelLeaved(char const * channelID, size_t channelID_size,int ecode) {
+    cout<<"onChannelLeaved channelID:"<<channelID<<",ecode:"<<ecode<<endl;
+  }
+  virtual void onChannelJoined(char const * channelID, size_t channelID_size)  override{
+    cout << "onChannelJoined Join channel successfully." << endl;
+  }
 
-      //    	agora->channelInviteUser("room1", "aa");
+  virtual void onChannelUserJoined(char const * account, size_t account_size,uint32_t uid)  override{
+    cout << "Event : " << account << ":" << uid << " joined" << endl;
+  }
+  virtual void onChannelUserLeaved(char const * account, size_t account_size,uint32_t uid)  override{
+    cout << "Event : " << account << ":" << uid << " leaved" <<  endl;
+  }
+  virtual void onChannelUserList(int n, char **accounts, uint32_t* uids)  override{
+    cout << "Channel User list : " <<  endl;
+    for(int i=0;i<n;i++){
+      cout << accounts[i] << ":" << uids[i] <<  endl;
     }
+  }
 
-    virtual void onChannelUserJoined(char const * account, size_t account_size,uint32_t uid)  override{
-        cout << "Event : " << account << ":" << uid << " joined" << endl;
-        // send Instant msg
-        #if 0
-        if (account != g_username){
-            string msg ;
-            msg += "Hi " + string(account,account_size) + ", I'm " + g_username;
-			      string msgID = "first_Instant_msg";
-            agora->messageInstantSend(account, account_size,uid,msg.data(), msg.size(),msgID.data(), msgID.size());
-        }
-        #endif
-    }
-    virtual void onChannelUserLeaved(char const * account, size_t account_size,uint32_t uid)  override{
-        cout << "Event : " << account << ":" << uid << " leaved" <<  endl;
-    }
+  virtual void onInviteReceived(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
+    cout << "Received invitation from " << account << " join channel : " << channelID << endl;
+    cout << "Joining " << channelID << endl;
+    agora->channelJoin(channelID, channelID_size);
 
-    virtual void onChannelUserList(int n, char **accounts, uint32_t* uids)  override{
-        cout << "Channel User list : " <<  endl;
-        for(int i=0;i<n;i++){
-            cout << accounts[i] << ":" << uids[i] <<  endl;
-        }
-		//agora->channelLeave(g_channel.data(), g_channel.size());
-    }
+    cout << "Accept invitaction from " << account << endl;
+    agora->channelInviteAccept(channelID, channelID_size,account, account_size,uid);
+  }
+  virtual void onInviteReceivedByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid)  override{
+    cout << "Invitation received by " << account << "" << endl;
+  }
 
-    virtual void onInviteReceived(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
-        cout << "Received invitation from " << account << " join channel : " << channelID << endl;
+  virtual void onInviteAcceptedByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
+    cout << "Invitation acceptd by " << account << endl;
+  call_next();
+  }
 
-        cout << "Joining " << channelID << endl;
-        agora->channelJoin(channelID, channelID_size);
+  virtual void onInviteRefusedByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
+    cout << "Invitation refused by " << account << endl;
+  }
 
-        cout << "Accept invitaction from " << account << endl;
-        agora->channelInviteAccept(channelID, channelID_size,account, account_size,uid);
-    }
+  virtual void onInviteEndByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
+    cout << "Invitation end by " << account << endl;
+  }
 
-    virtual void onInviteReceivedByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid)  override{
-        cout << "Invitation received by " << account << "" << endl;
-    }
+  virtual void onLog(char const * txt, size_t txt_size)  override{
+    //cout << "LOG:" << txt << endl;
+  }
 
-    virtual void onInviteAcceptedByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
-        cout << "Invitation acceptd by " << account << endl;
-
-		    call_next();
-    }
-
-    virtual void onInviteRefusedByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
-        cout << "Invitation refused by " << account << endl;
-    }
-
-    virtual void onInviteEndByPeer(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid, char const * extra, size_t extra_size)  override{
-        cout << "Invitation end by " << account << endl;
-    }
-
-    virtual void onLog(char const * txt, size_t txt_size)  override{
-    	//cout << "LOG:" << txt << endl;
-    }
-
-    virtual void onMessageInstantReceive(char const * account, size_t account_size,uint32_t uid,char const * msg, size_t msg_size)  override{
-        cout << "onMessageInstantReceive from " << account << ",message is:"  << msg << endl;
-        saveP2PChatHistory(string(account), string(msg), 1);
-    }
-    virtual void onMessageChannelReceive(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid,char const * msg, size_t msg_size)  override{
-        if(account != g_username)
-          cout << "onMessageChannelReceive " << channelID << " from " << account <<",message:"<< msg << endl;
-    }
-    virtual void onChannelQueryUserIsIn(char const * channelID, size_t channelID_size,char const * account, size_t account_size,int isIn) {
-      isJoinChannel = true;
-    }
+  virtual void onMessageInstantReceive(char const * account, size_t account_size,uint32_t uid,char const * msg, size_t msg_size)  override{
+    cout << "onMessageInstantReceive from " << account << ",message is:"  << msg << endl;
+    saveP2PChatHistory(string(account), string(msg), 1);
+  }
+  virtual void onMessageChannelReceive(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid,char const * msg, size_t msg_size)  override{
+    if(account != g_username)
+      cout << "onMessageChannelReceive " << channelID << " from " << account <<",message:"<< msg << endl;
+  }
+  virtual void onChannelQueryUserIsIn(char const * channelID, size_t channelID_size,char const * account, size_t account_size,int isIn) {
+    isJoinChannel = true;
+  }
+  virtual void onMessageSendError(char const * messageID, size_t messageID_size,int ecode) {
+    cout<<"send messageID:"<<messageID <<" failed,error code:"<<ecode<<endl;  
+  }
+  virtual void onMessageSendSuccess(char const * messageID, size_t messageID_size) {
+    cout<<"messageID:"<<messageID<<" send success!"<<endl;
+  }
 };
 
 uint32_t my_atol(char *n){
@@ -262,7 +208,6 @@ void p2pHelp(){
 void help(){
   cout<<"Please input ' switchp2p $somebody ' to chat with someone!"<<endl;
   cout<<"Please input ' switchp2c $oneChannel ' to chat in the channel!"<<endl;
-  //cout<<"Please input ' changeAccout $account' to change current account to special one! [default is the first account]"<<endl;
   cout<<"Please input ' quit ' to logout!"<<endl;
 }
 void p2cHelp(){
@@ -283,14 +228,6 @@ char commands[999] = {0};
 string msgID = "";
 string dump = "";
 void optInChannel(){
-#if 0
-  usleep(1000*1000);//sleep 1 s
-  agora->channelQueryUserIsIn(g_channel.c_str(), g_channel.size(), g_username.c_str(), g_username.size());
-  if(!isJoinChannel){
-    cout<<"not joined channel!"<<endl;
-    return;
-  }
-#endif
   while(fgets(commands, sizeof(commands)-1, stdin)){
     if(strncmp(commands,"sendmsg",strlen("sendmsg"))==0){
       //istringstream is(commands);
@@ -311,8 +248,7 @@ void optInChannel(){
   }
 }
 void opP2PChat(string& account){
-  while(fgets(commands, sizeof(commands)-1, stdin))
-  {
+  while(fgets(commands, sizeof(commands)-1, stdin)){
     if(strncmp(commands,"sendmsg",strlen("sendmsg"))==0){ //sendmsg &msg 
       string msg,MsgID = "";
       //istringstream is(commands);
@@ -386,9 +322,8 @@ int main(int argc, char** argv){
 	ICallBack *cb = agora->callbackGet();
 
   if (argc!=5){
-      printf(" Usage : ./sig_demo [vendorKey] [userName] [uid] [token] \n");
-        //printf(" demo  [vendorKey] [userName] [uid] [token] [channelName] [peerName] [peerUid] ... \n");
-		  exit(-1);
+    printf(" Usage : ./sig_demo [vendorKey] [userName] [uid] [token] \n");
+    exit(-1);
   }
   cout<<"argc:"<<argc<<endl;
   int i=1;
