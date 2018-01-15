@@ -29,7 +29,8 @@ typedef struct{
 vector<User> peers;
 
 //map<string, string> p2pHistory;//user-user
-
+static int countOk = 0;
+static int countFailed = 0;
 string g_vendor = "";
 string appCertificateId = "";
 
@@ -69,29 +70,39 @@ public:
 	  {
 	  }
     void do_login(){
-      string token = "";
+      string token = "_no_need_token";
+#if 0
       if(!appCertificateId.empty()){
         time_t ltime;
         time(&ltime);
         int expiredSecond = ltime + 3600;
         token = generateSignallingToken(g_username, g_vendor, appCertificateId, expiredSecond);
       }
+#endif
       cout << "Login as name:" << name << " ..." << endl;
 	    agora->login(g_vendor.data(),g_vendor.size(),name.data(),name.size(),token.data(),token.size(),g_uid,"",0);
     }
+    void do_logout(){
+      agora->logout();
+    }
+    void destory(){
+      agora->destory();
+    }
     virtual void onLoginSuccess(uint32_t uid, int fd) override {
         cout << "onLoginSuccess" <<",uid:"<<uid<<endl;
+        countOk++;
+        cout<<"countOk:"<<countOk<<endl;
         /*if (g_channel != ""){
             cout << "Ready to start call :"<< endl;
             cout << "uid:"<<uid<<" Join channel:" << g_channel << " ..." << endl;
             agora->channelJoin(g_channel.data(), g_channel.size());
         }*/
-        cout<<"online:"<<agora->isOnline()<<",pointer:"<<&agora<<endl;
+        /*cout<<"online:"<<agora->isOnline()<<",pointer:"<<&agora<<endl;
         if(g_queried){
             if (g_reconnect) agora->logout();
         }else{
             agora->channelQueryUserNum(g_channel.data(), g_channel.size());
-        }
+        }*/
         // agora->messageAppSend("{\"message\":{\"id\":3,\"timestamp\":1435635235511,\"data\":{\"uids\":[7914]},\"type\":3,\"cmd\":\"getProfiles\"}}", "000");
         // agora->messagePushSend(g_username, g_uid, "hello yy", "000");
     }
@@ -114,6 +125,8 @@ public:
 
     virtual void onLoginFailed(int ecode)  override{
         cout << "[Errot]:onLoginFailed : ecode =" << ecode << endl;
+        countFailed++;
+        cout<<"countFailed:"<<countFailed<<endl;
         //do_login();
     }
 
@@ -203,14 +216,14 @@ public:
     }
 
     virtual void onLog(char const * txt, size_t txt_size)  override{
-    	//cout << "[CB]:LOG:" << txt << endl;
+    	//cout << "[CB]:LOG------------------:" << txt << endl;
     }
 
     virtual void onMessageInstantReceive(char const * account, size_t account_size,uint32_t uid,char const * msg, size_t msg_size)  override{
-        cout << "onMessageInstantReceive from " << account << ":" << uid << " " << msg << endl;
+        //cout << "onMessageInstantReceive from " << account << ":" << uid << " " << msg << endl;
     }
     virtual void onMessageChannelReceive(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid,char const * msg, size_t msg_size)  override{
-        cout << "onMessageChannelReceive " << channelID << " from " << account << ":" << uid << " " << msg << endl;
+        //cout << "onMessageChannelReceive " << channelID << " from " << account << ":" << uid << " " << msg << endl;
     }
 };
 
@@ -228,7 +241,7 @@ string operator +(string const &a, int i){
 	os << a << i;
 	return os.str();
 }
-#define N 2
+#define N 510
 IAgoraAPI *agoras [N];
 CallBack *cb[N];
 std::thread threads[N];
@@ -366,13 +379,14 @@ void do_business(){
 pthread_t id_1;
 int main(int argc, char** argv){
   cout<<"main argc:"<<argc<<endl;
-  if (argc<4){
+  /*if (argc<4){
     cout<<"Usage:"<<endl;
-    cout<<"./sig_demo_mul appId name1:name2 appCertificateId"<<endl;
+    cout<<"./sig_demo_mul appId name1 appCertificateId"<<endl;
     return 0;
-  }
+  }*/
   g_vendor = argv[1];
-  std::string names = argv[2];
+  std::string str_name = argv[2];
+#if 0  
   if(names.find(" ") != std::string::npos){
     cout<<"[Error]:name connot contain space..."<<endl;
     return 0;
@@ -383,7 +397,6 @@ int main(int argc, char** argv){
   }
   appCertificateId = argv[3];
   cout<<"vendor appid:"<<argv[1]<<",base name:"<<names<<",appCertificateId:"<<appCertificateId<<endl;
-	 
 	//split names
 	vector<string> v;
   #if 0
@@ -396,16 +409,33 @@ int main(int argc, char** argv){
 		  cout << "name:"<< v[i] << ";";
 	  }
   //}
- //better to set N by name size! 
- 
+ //better to set N by name size!  
+#endif	 
+  char temp[10] = {0};
 	for (int i=0;i<N;i++){
-		agoras[i] = createAgoraSDKInstanceCPP();
-		cb[i] = new CallBack(agoras[i],  v[i]);
+    usleep(30*1000);
+		if(i>=500){
+      usleep(5*1000*1000);
+      cout<<"reach 500 instance!!!!"<<endl;
+      int j = i-16;
+      cb[j]->destory();
+      cout<<"log out 499"<<endl;
+
+      usleep(4000*1000);
+    }
+    agoras[i] = createAgoraSDKInstanceCPP();
+    if(agoras[i] == NULL){
+      cout<<"createAgoraSDKInstanceCPP return NULL!!!--------------99999----------------------------------------------------------------------------------------count:"<<i<<endl;
+      usleep(2*1000*1000);
+      return 0;
+    }
+    sprintf(temp, "%d", i); 
+    std::string myname = str_name + std::string(temp);
+    std::cout<<"str_name:"<<myname<<std::endl;
+		cb[i] = new CallBack(agoras[i], myname);
 		agoras[i]->callbackSet(cb[i]);
     cb[i]->do_login();
-    NameAgoraMap.insert(std::make_pair(v[i],agoras[i]));
-    if(firstName.empty())
-      firstName = v[i];
+        
 	}
 	// set default instance to control onLog
 	IAgoraAPI *agora = getAgoraSDKInstanceCPP();
@@ -414,11 +444,7 @@ int main(int argc, char** argv){
   cout<<"this pid:"<<pid<<endl;
   cout << "thead:"<<this_thread::get_id()<<endl;
   // run signal event loop , or start a new thread to do it
-  threads[0] = std::thread(do_business);
-  threads[0].detach();
-  threads[1] = std::thread(run_start);
-	threads[1].detach();
-  //agoras[0]->start();
+  agoras[0]->start();
   while(1){
     usleep(1000*10);
   }
