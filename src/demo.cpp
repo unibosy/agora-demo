@@ -200,7 +200,7 @@ class CallBack : public ICallBack{
     saveP2PChatHistory(string(account), string(msg), 1);
   }
   virtual void onMessageChannelReceive(char const * channelID, size_t channelID_size,char const * account, size_t account_size,uint32_t uid,char const * msg, size_t msg_size)  override{
-    if(account != g_username)
+    //if(account != g_username)
       cout << "onMessageChannelReceive " << channelID << " from " << account <<",message:"<< msg << endl;
   }
   virtual void onChannelQueryUserIsIn(char const * channelID, size_t channelID_size,char const * account, size_t account_size,int isIn) {

@@ -15,8 +15,8 @@ export LD_LIBRARY_PATH
 all: $(TARGET)
 
 $(TARGET):
-	$(LINK) demo_multi.cpp -o $@ -I ../include -W -L${LIBPATH} -lpthread -lagorasig -std=c++11
-	#$(LINK) demo.cpp -o sig_demo -I ../include -W -L${LIBPATH} -lagorasig -std=c++11
+	#$(LINK) demo_multi.cpp -o $@ -I ../include -W -L${LIBPATH} -lpthread -lagorasig -std=c++11
+	$(LINK) demo.cpp -o sig_demo -I ../include -W -L${LIBPATH} -lagorasig -std=c++11
 
 clean:
 	rm -f $(TARGET)
