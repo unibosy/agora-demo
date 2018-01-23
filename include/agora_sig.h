@@ -147,6 +147,7 @@ namespace agora_sdk_cpp
     virtual int getSdkVersion () = 0;
     virtual void bc_call (char const * func, size_t func_size,char const * json_args, size_t json_args_size,char const * callID, size_t callID_size) = 0;
     virtual void dbg (char const * a, size_t a_size,char const * b, size_t b_size) = 0;
+    virtual void destory () = 0;
   };
 }
 
