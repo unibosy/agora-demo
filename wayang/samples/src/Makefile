@@ -12,7 +12,7 @@ LDFLAGS= -static-libgcc -std=c++11 -Wl,-rpath,$(LIBPATH)
 CXXFLAGS  = -std=c++0x -fPIC -g -fno-omit-frame-pointer \
 			-DNDEBUG=1 -Wconversion -O3 -Wall -W -fvisibility=hidden
 					
-LIB	   = -pthread -lpthread -L$(LIBPATH) -lrt -ljson
+LIB	   = -pthread -lpthread -L$(LIBPATH) -lagora-rtc-sdk -lrt -ljson
 INCPATH =-I. -I${TOPDIR}/include -I${COMMONPATH} -I${EASYWSCPATH}
 
 SRC =$(wildcard ../easywsclient/*.cpp *.cpp)
