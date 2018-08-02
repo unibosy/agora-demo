@@ -27,6 +27,7 @@ string g_channel = "";
 bool b_handler = true;
 string g_token = "";
 int iCreateEngine = -1;
+int channel_profile = 0;//0:com, 1:live
 
 const string URL_WAYANG="ws://qa.agoralab.co:8081/JavaWebSocket/websocket";
 
@@ -34,6 +35,7 @@ const string URL_WAYANG="ws://qa.agoralab.co:8081/JavaWebSocket/websocket";
 static void on_join_channel_success (const char *channel, uint32_t uid, int elapsed)
 {
 	fprintf (stderr, "%u logined successfully in %s, elapsed: %d ms\n", uid, channel, elapsed);
+    cout<<"on_join_channel_success"<<endl;
 }
 
 static void on_rejoin_channel_success (const char *channel, uint32_t uid, int elapsed) 
@@ -147,8 +149,9 @@ Json::Value str2Json(const std::string& str) {
         }
     }else if(cmd_str == CREATE) {
         g_appid = value[INFO][APPID].asString();
+        g_uid = value[INFO][URI_UID].asInt();
         b_handler = value[INFO][HANDLER].asBool();
-        cout <<"g_appid:"<<g_appid<<", b_handler:"<<b_handler<<endl;
+        cout <<"g_appid:"<<g_appid<<", uid:"<<g_uid<<", b_handler:"<<b_handler<<endl;
         iCreateEngine = agora_rtc_create (g_appid.c_str(), g_uid, &event_handler);
     }else if(cmd_str == JOINCHANNEL) {
         g_channel = value[INFO][CHANNELNAME].asString();
@@ -157,16 +160,37 @@ Json::Value str2Json(const std::string& str) {
         if(!iCreateEngine){
             int ret = -1;
             ret = agora_rtc_join_channel (g_channel.c_str());
-            if(!ret){
+            if(ret){
                 cout<<"join channel "<<g_channel<<" failed, ret:"<<ret<<endl;
             }else{
                 cout<<"join channel "<<g_channel<<" successfully"<<endl;
             }
         }
+    }else if(cmd_str == CMD_SETCHANNELPROFILE) {
+        channel_profile = value[INFO][URI_PROFILE].asInt();
+        cout<<"channel profile:"<<channel_profile<<endl;
+        //no api to set this yet
+    }else if(cmd_str == CMD_ENABLEVIDEO) {
+        int optVlaue = value[INFO][URI_OPTVAL].asInt();
+        cout<<"opt value:"<<optVlaue<<endl;
+        agora_rtc_enable_video(g_channel.c_str(), optVlaue);
+    }else if(cmd_str == CMD_ENABLEAUDIO) {
+        int optVlaue = value[INFO][URI_OPTVAL].asInt();
+        cout<<"opt value:"<<optVlaue<<endl;
+        agora_rtc_enable_audio(g_channel.c_str(), optVlaue);
+    }else if(cmd_str == CMD_MUTEAUDIO) {
+        int optVlaue = value[INFO][URI_OPTVAL].asInt();
+        cout<<"opt value:"<<optVlaue<<endl;
+        agora_rtc_mute_audio(g_channel.c_str(), optVlaue);
+    }else if(cmd_str == CMD_MUTEVIDEO) {
+        int optVlaue = value[INFO][URI_OPTVAL].asInt();
+        cout<<"opt value:"<<optVlaue<<endl;
+        agora_rtc_mute_video(g_channel.c_str(), optVlaue);
     }
 
     return value;
 }
+
 
 int main(int argc, char* argv[])
 {
@@ -182,7 +206,7 @@ int main(int argc, char* argv[])
 #endif
     std::shared_ptr<WebSocket> ws(WebSocket::from_url(URL_WAYANG));
     assert(ws);
-    ws->send("\{\"device\": \"android_001\",\"cmd\": \"register\" ,\"type\": 2, \"sequence\": 1527584393223\}");
+    ws->send("\{\"device\": \"linux_001\",\"cmd\": \"register\" ,\"type\": 2, \"sequence\": 1527584393223\}");
     cout<<"state:"<<ws->getReadyState()<<endl;
     cout<<"WebSocket::CLOSED is:"<<WebSocket::CLOSED<<endl;
     int count = 0;
